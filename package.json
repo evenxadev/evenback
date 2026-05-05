@@ -2,14 +2,14 @@
   "name": "evenxa-backend",
   "version": "1.0.0",
   "main": "index.js",
-  
-  "scripts": {
-    "dev": "tsx apps/api/src/server.ts",
+   "scripts": {
+    "dev:api": "tsx watch apps/api/src/server.ts",
     "build": "tsc",
-    "start": "node dist/apps/api/src/server.js",
-    "test": "vitest"
-  }
-,
+    "start:api": "node dist/apps/api/src/server.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
