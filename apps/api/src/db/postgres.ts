@@ -1,8 +1,12 @@
 import { Pool } from "pg";
 import { env } from "../config/env";
 
+const isProduction = env.nodeEnv === "production";
+
 export const db = new Pool({
-  host: env.db.host,
+  host: isProduction
+    ? `/cloudsql/${process.env.CLOUD_SQL_CONNECTION_NAME}`
+    : env.db.host,
   port: env.db.port,
   user: env.db.user,
   password: env.db.password,

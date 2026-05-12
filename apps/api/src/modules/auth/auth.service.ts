@@ -102,3 +102,31 @@ export async function logoutUser(userId: string) {
     [userId]
   );
 }
+
+export async function refreshAccessToken(refreshToken: string) {
+  const result = await db.query(
+    `SELECT tr.id, tr.token_hash, tr.user_id, tr.expires_at, tr.revoked_at,
+            u.email, u.is_active, r.name as role
+     FROM tokens_refresh tr
+     JOIN usuarios u ON u.id = tr.user_id
+     LEFT JOIN usuario_roles ur ON ur.user_id = u.id
+     LEFT JOIN roles r ON r.id = ur.role_id
+     WHERE tr.expires_at > now()
+       AND tr.revoked_at IS NULL`,
+    []
+  );
+
+  for (const row of result.rows) {
+    const valid = await bcrypt.compare(refreshToken, row.token_hash);
+    if (valid) {
+      if (!row.is_active) throw new AppError("Cuenta desactivada", 403);
+      return {
+        userId: row.user_id,
+        email: row.email,
+        role: row.role,
+      };
+    }
+  }
+
+  throw new UnauthorizedError();
+}
