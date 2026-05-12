@@ -1,0 +1,23 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'buildx', 'build',
+      '--platform', 'linux/amd64',
+      '-t', 'us-central1-docker.pkg.dev/evenxa-backend-prod/evenxa-repo/api:latest',
+      '--push', '.'
+    ]
+
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    args: [
+      'gcloud', 'run', 'deploy', 'evenxa-api',
+      '--image=us-central1-docker.pkg.dev/evenxa-backend-prod/evenxa-repo/api:latest',
+      '--region=us-central1',
+      '--platform=managed',
+      '--allow-unauthenticated',
+      '--port=8080',
+      '--add-cloudsql-instances=evenxa-backend-prod:us-central1:evenxa-db',
+      '--set-secrets=JWT_SECRET=JWT_SECRET:latest,DB_PASSWORD=DB_PASSWORD:latest,DB_NAME=DB_NAME:latest,DB_USER=DB_USER:latest,DB_PORT=DB_PORT:latest,CLOUD_SQL_CONNECTION_NAME=CLOUD_SQL_CONNECTION_NAME:latest'
+    ]
+
+options:
+  logging: CLOUD_LOGGING_ONLY
