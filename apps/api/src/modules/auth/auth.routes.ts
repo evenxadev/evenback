@@ -4,6 +4,8 @@ import {
   loginController,
   logoutController,
   refreshController,
+  verificarEmailController,
+  reenviarCodigoController,
 } from "./auth.controller";
 import { requireAuth } from "../../middlewares/auth.guard";
 
@@ -12,4 +14,6 @@ export async function authRoutes(app: FastifyInstance) {
   app.post("/login", loginController);
   app.post("/refresh", refreshController);
   app.post("/logout", { preHandler: [requireAuth] }, logoutController);
+  app.post("/verificar-email", verificarEmailController);
+  app.post("/reenviar-codigo", reenviarCodigoController);
 }
