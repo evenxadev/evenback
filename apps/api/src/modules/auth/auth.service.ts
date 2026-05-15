@@ -20,11 +20,12 @@ export async function registerUser(input: RegisterInput) {
 
   const password_hash = await bcrypt.hash(input.password, 12);
 
-  const result = await db.query(
-    `INSERT INTO usuarios (email, password_hash, nombre, apellido_paterno, apellido_materno, telefono)
-     VALUES ($1, $2, $3, $4, $5, $6)
-     RETURNING id, email, nombre, apellido_paterno, apellido_materno, telefono`,
-    [input.email, password_hash, input.nombre, input.apellido_paterno, input.apellido_materno ?? null, input.telefono ?? null]
+ 
+ const result = await db.query(
+    `INSERT INTO usuarios (email, password_hash, nombre, apellido_paterno, apellido_materno, telefono, curp, fecha_nacimiento)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+     RETURNING id, email, nombre, apellido_paterno, apellido_materno, telefono, curp, fecha_nacimiento`,
+    [input.email, password_hash, input.nombre, input.apellido_paterno, input.apellido_materno, input.telefono, input.curp ?? null, input.fecha_nacimiento ?? null]
   );
 
   const user = result.rows[0];

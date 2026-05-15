@@ -5,6 +5,7 @@ import { authRoutes } from "./modules/auth/auth.routes";
 import { eventosRoutes } from "./modules/eventos/eventos.routes";
 import { reservasRoutes } from "./modules/reservas/reservas.routes";
 import { pagosRoutes } from "./modules/pagos/pagos.routes";
+import { usuariosRoutes } from "./modules/usuarios/usuarios.routes";
 import corsPlugin from "./plugins/cors";
 import jwtPlugin from "./plugins/jwt";
 
@@ -49,6 +50,7 @@ app.get("/", async (_req, reply) => {
   app.register(eventosRoutes, { prefix: "/eventos" });
   app.register(reservasRoutes, { prefix: "/reservas" });
   app.register(pagosRoutes, { prefix: "/pagos" });
+  app.register(usuariosRoutes, { prefix: "/usuarios" });
 
   return app;
 }
