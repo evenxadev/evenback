@@ -1,6 +1,16 @@
 import { FastifyRequest, FastifyReply } from "fastify";
 import { registerSchema, loginSchema, refreshSchema } from "./auth.schema";
-import { registerUser, loginUser, logoutUser, refreshAccessToken, verificarEmail, reenviarCodigo } from "./auth.service";
+import { 
+  registerUser, 
+  loginUser, 
+  logoutUser, 
+  refreshAccessToken, 
+  verificarEmail, 
+  reenviarCodigo,
+  solicitarRecuperacion,
+  verificarCodigoReset,
+  resetPassword
+} from "./auth.service";
 import { AppError } from "../../shared/errors";
 
 export async function registerController(
@@ -104,6 +114,58 @@ export async function reenviarCodigoController(
   try {
     const { email } = req.body as { email: string };
     const result = await reenviarCodigo(email);
+    return reply.send(result);
+  } catch (err) {
+    if (err instanceof AppError) {
+      return reply.status(err.statusCode).send({ error: err.message });
+    }
+    throw err;
+  }
+}
+
+export async function solicitarRecuperacionController(
+  req: FastifyRequest,
+  reply: FastifyReply
+) {
+  try {
+    const { email } = req.body as { email: string };
+    const result = await solicitarRecuperacion(email);
+    return reply.send(result);
+  } catch (err) {
+    if (err instanceof AppError) {
+      return reply.status(err.statusCode).send({ error: err.message });
+    }
+    throw err;
+  }
+}
+
+export async function verificarCodigoResetController(
+  req: FastifyRequest,
+  reply: FastifyReply
+) {
+  try {
+    const { email, codigo } = req.body as { email: string; codigo: string };
+    const result = await verificarCodigoReset(email, codigo);
+    return reply.send(result);
+  } catch (err) {
+    if (err instanceof AppError) {
+      return reply.status(err.statusCode).send({ error: err.message });
+    }
+    throw err;
+  }
+}
+
+export async function resetPasswordController(
+  req: FastifyRequest,
+  reply: FastifyReply
+) {
+  try {
+    const { email, codigo, nueva_password } = req.body as { 
+      email: string; 
+      codigo: string; 
+      nueva_password: string 
+    };
+    const result = await resetPassword(email, codigo, nueva_password);
     return reply.send(result);
   } catch (err) {
     if (err instanceof AppError) {

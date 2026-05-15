@@ -1,7 +1,7 @@
-import { db } from "../../db/postgres";
+ import { db } from "../../db/postgres";
 import { AppError, ConflictError, UnauthorizedError } from "../../shared/errors";
 import { RegisterInput, LoginInput } from "./auth.schema";
-import { enviarCodigoVerificacion } from "../../shared/email";
+import { enviarCodigoVerificacion, enviarEmail } from "../../shared/email";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
 
@@ -20,8 +20,7 @@ export async function registerUser(input: RegisterInput) {
 
   const password_hash = await bcrypt.hash(input.password, 12);
 
- 
- const result = await db.query(
+  const result = await db.query(
     `INSERT INTO usuarios (email, password_hash, nombre, apellido_paterno, apellido_materno, telefono, curp, fecha_nacimiento)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
      RETURNING id, email, nombre, apellido_paterno, apellido_materno, telefono, curp, fecha_nacimiento`,
@@ -125,6 +124,120 @@ export async function reenviarCodigo(email: string) {
   await enviarCodigoVerificacion(user.email, codigo, user.nombre);
 
   return { message: "Código reenviado correctamente" };
+}
+
+export async function solicitarRecuperacion(email: string) {
+  const userResult = await db.query(
+    "SELECT id, nombre FROM usuarios WHERE email = $1",
+    [email]
+  );
+
+  if (userResult.rows.length === 0) throw new AppError("Email no registrado", 404);
+
+  const user = userResult.rows[0];
+
+  await db.query(
+    `UPDATE public.codigos_verificacion SET usado = true 
+     WHERE usuario_id = $1 AND tipo = 'reset_password' AND usado = false`,
+    [user.id]
+  );
+
+  const codigo = Math.floor(100000 + Math.random() * 900000).toString();
+  const expiresAt = new Date();
+  expiresAt.setMinutes(expiresAt.getMinutes() + CODIGO_EXPIRA_MINUTOS);
+
+  await db.query(
+    `INSERT INTO public.codigos_verificacion (usuario_id, codigo, tipo, expires_at)
+     VALUES ($1, $2, $3, $4)`,
+    [user.id, codigo, "reset_password", expiresAt]
+  );
+
+  await enviarEmail(
+    email,
+    "Recuperación de contraseña — Evenxa",
+    `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <h1 style="color: #1a1a2e;">Recupera tu contraseña</h1>
+      <p>Hola ${user.nombre},</p>
+      <p>Tu código de recuperación es:</p>
+      <div style="background: #f4f4f4; padding: 20px; text-align: center; border-radius: 8px; margin: 20px 0;">
+        <h2 style="color: #1a1a2e; font-size: 36px; letter-spacing: 8px;">${codigo}</h2>
+      </div>
+      <p>Este código expira en <strong>15 minutos</strong>.</p>
+      <p>Si no solicitaste recuperar tu contraseña, ignora este correo.</p>
+    </div>
+    `
+  );
+
+  return { message: "Código de recuperación enviado al correo" };
+}
+
+export async function verificarCodigoReset(email: string, codigo: string) {
+  const userResult = await db.query(
+    "SELECT id FROM usuarios WHERE email = $1",
+    [email]
+  );
+
+  if (userResult.rows.length === 0) throw new AppError("Email no registrado", 404);
+
+  const userId = userResult.rows[0].id;
+
+  const result = await db.query(
+    `SELECT id FROM public.codigos_verificacion
+     WHERE usuario_id = $1
+       AND codigo = $2
+       AND tipo = 'reset_password'
+       AND usado = false
+       AND expires_at > now()`,
+    [userId, codigo]
+  );
+
+  if (result.rows.length === 0) throw new AppError("Código inválido o expirado", 400);
+
+  return { message: "Código válido", valid: true };
+}
+
+export async function resetPassword(email: string, codigo: string, nuevaPassword: string) {
+  const userResult = await db.query(
+    "SELECT id FROM usuarios WHERE email = $1",
+    [email]
+  );
+
+  if (userResult.rows.length === 0) throw new AppError("Email no registrado", 404);
+
+  const userId = userResult.rows[0].id;
+
+  const result = await db.query(
+    `SELECT id FROM public.codigos_verificacion
+     WHERE usuario_id = $1
+       AND codigo = $2
+       AND tipo = 'reset_password'
+       AND usado = false
+       AND expires_at > now()`,
+    [userId, codigo]
+  );
+
+  if (result.rows.length === 0) throw new AppError("Código inválido o expirado", 400);
+
+  const password_hash = await bcrypt.hash(nuevaPassword, 12);
+
+  await db.query(
+    `UPDATE usuarios SET password_hash = $1 WHERE id = $2`,
+    [password_hash, userId]
+  );
+
+  await db.query(
+    `UPDATE public.codigos_verificacion SET usado = true WHERE id = $1`,
+    [result.rows[0].id]
+  );
+
+  await db.query(
+    `UPDATE tokens_refresh SET revoked_at = now() 
+     WHERE user_id = $1 AND revoked_at IS NULL`,
+    [userId]
+  );
+
+  return { message: "Contraseña actualizada correctamente" };
 }
 
 export async function loginUser(input: LoginInput) {
