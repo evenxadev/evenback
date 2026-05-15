@@ -20,10 +20,22 @@ export async function testDatabaseConnection(): Promise<{ current_time: Date }> 
   const client = await db.connect();
   try {
     const result = await client.query<{ current_time: Date }>(
-      "SELECT NOW() AS current_time"
+      "SELECT NOW() AS current_time, current_database() as db, current_user as usr"
     );
+    console.log("BD info:", result.rows[0]);
     return result.rows[0];
   } finally {
     client.release();
   }
 }
+
+db.query(`
+  SELECT 
+    current_database() as database,
+    current_schema() as schema,
+    current_user as user,
+    inet_server_addr() as host,
+    inet_server_port() as port
+`).then((res) => {
+  console.log("DB conectada:", res.rows[0]);
+});
